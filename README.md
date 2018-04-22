@@ -4,6 +4,7 @@
 # Customizations Done
 * Added 2 __dense(Fully connected)__ layers followed by a SoftMax layer.
 * Added __dropout__ to both the dense layers.
+* Added *batch_normalization* for dense layers
 * Replaced __Gradient-descent__ with __Gradient-descent with Momentum__
 * Added live streamed confusion Matrix
 
