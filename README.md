@@ -1,5 +1,5 @@
 # transfer-learning-with-tensorflow
-A customised version of (retrain.py)[https://github.com/tensorflow/hub/blob/master/examples/image_retraining/retrain.py] for training on image data
+A customised version of [retrain.py](https://github.com/tensorflow/hub/blob/master/examples/image_retraining/retrain.py) for training on image data
 
 # Customizations Done
 * Added 2 __dense(Fully connected)__ layers followed by a SoftMax layer.
