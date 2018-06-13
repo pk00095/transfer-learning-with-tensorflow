@@ -807,7 +807,7 @@ def plot_confusion_matrix(correct_labels, predict_labels,labels,session, title='
 
 
 def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
-                           bottleneck_tensor_size,beta=0.005):
+                           bottleneck_tensor_size,beta=0.005,training=False):
   """Adds a new softmax and fully-connected layer for training.
 
   We need to retrain the top layer to identify our new classes, so this function
@@ -854,17 +854,12 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
       logits_hidden1 = tf.matmul(bottleneck_input, layer1_weights) #+ layer1_biases
       tf.summary.histogram('hidden1_pre_activations', logits_hidden1)
     with tf.name_scope('hidden1_batchNorm'):
-      batch_mean1,batch_variance1=tf.nn.moments(logits_hidden1,[0])
-      scale1 = tf.Variable(tf.ones([1024]))
-      beta1 = tf.Variable(tf.zeros([1024]))
-      BN_logits = tf.nn.batch_normalization(
-                logits_hidden1,
-                batch_mean1,
-                batch_variance1,
-                beta1,
-                scale1,
-                variance_epsilon=1e-3,
-                name='Hidden1_batchNorm')
+      BN_logits = tf.layers.batch_norm(logits_hidden1,
+					       center=True,
+					       scale=True,
+					       is_training=training,
+					       name='Hidden1_batchNorm')
+  
     with tf.name_scope('hidden1_activation'):
       #inp_activated=tf.nn.relu(logits1,name='hidden1_activation')
       inp_activated=tf.nn.relu(BN_logits,name='hidden1_activation')
@@ -885,17 +880,11 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
       logits_hidden2 = tf.matmul(dropped_hidden1,layer2_weights)   #+layer2_biases
       tf.summary.histogram('hidden2_pre_activations',logits_hidden2)
     with tf.name_scope('hidden2_batchNorm'):
-      batch_mean2,batch_variance2=tf.nn.moments(logits_hidden2,[0])
-      scale2 = tf.Variable(tf.ones([1024]))
-      beta2 = tf.Variable(tf.zeros([1024]))
-      BN2_logits = tf.nn.batch_normalization(
-                logits_hidden2,
-                batch_mean2,
-                batch_variance2,
-                beta2,
-                scale2,
-                variance_epsilon=1e-3,
-                name='Hidden2_batchNorm')
+     BN2_logits = tf.layers.batch_norm(logits_hidden1,
+					       center=True,
+					       scale=True,
+					       is_training=training,
+					       name='Hidden2_batchNorm')
     with tf.name_scope('hidden2_activation'):
       hidden2_activated=tf.nn.relu(BN2_logits,name='hiddenLayer2_activation')
       tf.summary.histogram('hiddenLayer2_Activation',hidden2_activated)
@@ -926,10 +915,10 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
   tf.summary.histogram('activations', final_tensor)
 
   with tf.name_scope('cross_entropy'):
-    #cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-     #   labels=ground_truth_input, logits=logits)
-    cross_entropy = tf.losses.hinge_loss(
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
         labels=ground_truth_input, logits=logits)
+    #cross_entropy = tf.losses.hinge_loss(
+     #   labels=ground_truth_input, logits=logits)
     #with tf.name_scope('l2_regularization'):
 	#	regularizer=tf.nn.l2_loss(layer_weights)
     with tf.name_scope('total'):
@@ -943,7 +932,11 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
            learning_rate=FLAGS.learning_rate,
            use_nesterov=True,
            momentum=0.9) #Momentum gradient descent
-    train_step = optimizer.minimize(cross_entropy_mean)
+
+	
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        train_step = optimizer.minimize(cross_entropy_mean)
 
   return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
           final_tensor)
@@ -1253,7 +1246,8 @@ def main(_):
       train_summary, _ = sess.run(
           [merged, train_step],
           feed_dict={bottleneck_input: train_bottlenecks,
-                     ground_truth_input: train_ground_truth})
+                     ground_truth_input: train_ground_truth,
+		     training : True})
       train_writer.add_summary(train_summary, i)
 
       # Every so often, print out how well the graph is training.
@@ -1262,7 +1256,8 @@ def main(_):
         train_accuracy, cross_entropy_value = sess.run(
             [evaluation_step, cross_entropy],
             feed_dict={bottleneck_input: train_bottlenecks,
-                       ground_truth_input: train_ground_truth})
+                       ground_truth_input: train_ground_truth,
+		        training : False})
         tf.logging.info('%s: Step %d: Train accuracy = %.1f%%' %
                         (datetime.now(), i, train_accuracy * 100))
         tf.logging.info('%s: Step %d: Cross entropy = %f' %
