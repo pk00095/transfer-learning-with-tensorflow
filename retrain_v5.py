@@ -1273,7 +1273,8 @@ def main(_):
         validation_summary, validation_accuracy,predicts,g_truths = sess.run(
             [merged, evaluation_step,prediction,ground_truth_preds],
             feed_dict={bottleneck_input: validation_bottlenecks,
-                       ground_truth_input: validation_ground_truth})
+                       ground_truth_input: validation_ground_truth,
+		       training : False})
         validation_writer.add_summary(validation_summary, i)
         tf.logging.info('%s: Step %d: Validation accuracy = %.1f%% (N=%d)' %
                         (datetime.now(), i, validation_accuracy * 100,
