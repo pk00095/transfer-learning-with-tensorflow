@@ -854,10 +854,10 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor,
       logits_hidden1 = tf.matmul(bottleneck_input, layer1_weights) #+ layer1_biases
       tf.summary.histogram('hidden1_pre_activations', logits_hidden1)
     with tf.name_scope('hidden1_batchNorm'):
-      BN_logits = tf.layers.batch_norm(logits_hidden1,
+      BN_logits = tf.layers.batch_normalization(logits_hidden1,
 					       center=True,
 					       scale=True,
-					       is_training=training,
+					       training=training,
 					       name='Hidden1_batchNorm')
   
     with tf.name_scope('hidden1_activation'):
